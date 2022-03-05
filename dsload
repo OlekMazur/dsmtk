@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# Clear flash and load it with a hex file given as an argument
+
+FILE="$1"
+shift
+
+`dirname $0`/dsmtk $* <<EOF
+K
+/load $FILE
+EOF
