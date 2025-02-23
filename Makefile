@@ -1,16 +1,12 @@
-# Makefile for dsmtk
+CFLAGS	+= -g -std=c99 -pedantic -Werror -Wall -Wextra -Wmissing-declarations -Wdeclaration-after-statement -Wformat=2
+LDFLAGS	+= -g
 
-CFLAGS=-s
-VERSION=0.2
-TARBALL=dsmtk-$(VERSION).tar.gz
-DISTRO_FILES=COPYING README Makefile *.c dsmtk dsload
+.PHONY:	all clean
 
 all:	dsmtk
 
-tarball:	$(TARBALL)
-
-$(TARBALL):	$(DISTRO_FILES)
-	tar czf $@ $^
+clean:
+	rm -f dsmtk dsmtk.o
 
 dsmtk:	dsmtk.o
 	$(CC) $(CFLAGS) $^ -o $@

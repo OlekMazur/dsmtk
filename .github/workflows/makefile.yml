@@ -1,0 +1,23 @@
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Build
+      run: |
+        make
+        strip -p dsmtk
+    - name: Upload exe artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: executable
+        path: dsmtk

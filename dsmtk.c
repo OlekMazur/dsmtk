@@ -22,14 +22,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
+#include <sys/time.h>
+#include <time.h>
+#include <termios.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <termios.h>
 #include <signal.h>
 #include <getopt.h>
 
 #define	PROGRAM	"dsmtk"
-#define	VERSION	"0.2 (20050507)"
+#define	VERSION	"0.3"
 
 static const char gpl_notice[] =
   PROGRAM " comes with ABSOLUTELY NO WARRANTY; for details see COPYING.\n"
@@ -57,7 +60,7 @@ FILE *grabber;
 /**************************************/
 
 /* Command-line options parsing */
-void get_options(int argc, char **argv)
+static void get_options(int argc, char **argv)
 {
 	const char shortopt[] = "t:r:o:hv";
 	const struct option longopt[] = {
@@ -107,14 +110,14 @@ void get_options(int argc, char **argv)
 
 /**************************************/
 
-void signal_term(int sig)
+static void signal_term(int sig)
 {
-	fprintf(stderr, "Signal %d catched - exiting\n", sig);
+	fprintf(stderr, "Signal %d caught - exiting\n", sig);
 	signal(sig, SIG_DFL);
 	exit(0);
 }
 
-void close_grabber(void)
+static void close_grabber(void)
 {
 	if (grabber) {
 		fclose(grabber);
@@ -124,7 +127,7 @@ void close_grabber(void)
 }
 
 /* waits for input at fd for timeout1 seconds and timeout2 microseconds */
-int wait_for_input(int fd, int timeout1, int timeout2)
+static int wait_for_input(int fd, int timeout1, int timeout2)
 {
 	struct timeval tv = { timeout1, timeout2 };
 	fd_set set;
@@ -143,7 +146,7 @@ int wait_for_input(int fd, int timeout1, int timeout2)
 }
 
 /* reads one character from fd (with error handling) */
-int read_char(int fd)
+static int read_char(int fd)
 {
 	char znak;
 
@@ -159,7 +162,7 @@ int read_char(int fd)
 }
 
 /* reads line from fd to buf, up to max characters */
-int read_line(int fd, char *buf, int max)
+static int read_line(int fd, char *buf, int max)
 {
 	char *p = buf;
 	char znak = 0;
@@ -188,7 +191,7 @@ int read_line(int fd, char *buf, int max)
 }
 
 /* returns pointer to a message matching given response code received from device */
-const char *decode_response(int c)
+static const char *decode_response(int c)
 {
 	typedef struct {
 		int code;
@@ -213,7 +216,7 @@ const char *decode_response(int c)
 	return p->message;
 }
 
-int load_verify(const char *command, const char *file)
+static int load_verify(const char *command, const char *file)
 {
 	int r;
 	FILE *f;
@@ -224,7 +227,8 @@ int load_verify(const char *command, const char *file)
 		return -1;
 	}
 
-	if (f = fopen(file, "r")) {
+	f = fopen(file, "r");
+	if (f) {
 		int line = 0;
 		char buf[512];
 
@@ -264,7 +268,7 @@ int load_verify(const char *command, const char *file)
 	return r;
 }
 
-void grab(const char *file)
+static void grab(const char *file)
 {
 	close_grabber();
 
@@ -277,7 +281,7 @@ void grab(const char *file)
 	}
 }
 
-void handle_command(const char *buf)
+static void handle_command(const char *buf)
 {
 	static const char *builtins =
 	"WRAPPERS:\n"
@@ -330,7 +334,7 @@ void handle_command(const char *buf)
 		fputs("Invalid command; try \"/help\"\n", stderr);
 }
 
-void reset_terminal(void)
+static void reset_terminal(void)
 {
 	tcsetattr(fd, TCSANOW, &saved_attributes);
 	close(fd);
@@ -360,7 +364,7 @@ static const int baudrate_conv[] = {
 	-1, -1
 };
 
-int int2baudrate(int br)
+static int int2baudrate(int br)
 {
 	const int *baudrate;
 
@@ -371,7 +375,7 @@ int int2baudrate(int br)
 	return 0;
 }
 
-int baudrate2int(int br)
+static int baudrate2int(int br)
 {
 	const int *baudrate;
 
@@ -420,7 +424,7 @@ int main(int argc, char **argv)
 	ts.c_oflag &= ~(OPOST);
 	ts.c_cflag &= ~(CSTOPB|PARENB|PARODD|CSIZE);
 	ts.c_cflag |= HUPCL|CREAD|CS8|CLOCAL;
-	ts.c_lflag &= ~(ICANON|ECHO|ECHOE|ECHOPRT|ECHOK|ECHOKE|ECHONL);
+	ts.c_lflag &= ~(ICANON|ECHO|ECHOE|ECHOK|ECHONL);
 	ts.c_cc[VMIN] = 0;
 	ts.c_cc[VTIME] = 0;
 	r = int2baudrate(baudrate);
@@ -439,8 +443,6 @@ int main(int argc, char **argv)
 	}
 
 	for (;;) {
-		char znak;
-
 		write(fd, "\r\n", 2);
 		if (wait_for_input(fd, 0, 100000))
 			break;
@@ -490,7 +492,7 @@ int main(int argc, char **argv)
 					buf[sizeof(buf) - 1] = 0;
 					len = strlen(buf);
 					command = buf[0] == '/';
-					if (buf[len - 1] == '\n')
+					if (buf[len - 1] == '\n') {
 						if (command) {
 							buf[len - 1] = 0;
 						} else {
@@ -498,6 +500,7 @@ int main(int argc, char **argv)
 							buf[len++] = '\n';
 							buf[len] = '\0';
 						}
+					}
 					if (command) {
 						handle_command(buf + 1);
 					} else {
