@@ -16,8 +16,9 @@ jobs:
       run: |
         make
         strip -p dsmtk
-    - name: Upload exe artifact
-      uses: actions/upload-artifact@v3
+    - name: Upload executable
+      uses: actions/upload-artifact@v4
       with:
-        name: executable
+        name: dsmtk
+        compression-level: 9
         path: dsmtk
